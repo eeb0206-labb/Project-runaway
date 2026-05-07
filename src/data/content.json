@@ -1,0 +1,44 @@
+{
+  "ticker": [
+    "PRICES INDICATIVE — CONFIRM ON OPERATOR SITE",
+    "RAILCARD HOLDERS SAVE UP TO 1/3 ON RAIL FARES",
+    "ALL PRICES SHOWN ARE APPROXIMATE RETURN FARES",
+    "BOOK DIRECT WITH OPERATORS FOR BEST PRICES",
+    "HOW FAR CAN YOUR BUDGET TAKE YOU?",
+    "SPONTANEOUS TRAVEL — NO PASSPORT REQUIRED FOR UK DESTINATIONS",
+    "16-25 RAILCARD — £30/YR — PAYS FOR ITSELF IN ONE TRIP"
+  ],
+  "offlineBanner": "OFFLINE — SHOWING CACHED ROUTES",
+  "statusMessages": {
+    "searching": "SCANNING ROUTES...",
+    "noResults": "NO ROUTES WITHIN BUDGET — TRY INCREASING YOUR BUDGET",
+    "error": "CONNECTION FAILED — SHOWING CACHED DATA",
+    "ready": "ENTER YOUR DETAILS AND HIT SEARCH"
+  },
+  "searchPanel": {
+    "budgetLabel": "BUDGET",
+    "originLabel": "DEPART FROM",
+    "tripTypeLabel": "TRIP TYPE",
+    "modesLabel": "TRANSPORT",
+    "passengersLabel": "PAX",
+    "searchButton": "FIND ESCAPES",
+    "surpriseMeButton": "SURPRISE ME",
+    "clearButton": "CLEAR"
+  },
+  "boardColumns": {
+    "rank": "#",
+    "destination": "DESTINATION",
+    "travelTime": "TRAVEL",
+    "route": "VIA",
+    "distance": "KM",
+    "price": "FROM"
+  },
+  "tripTypes": {
+    "daytrip": "DAY TRIP",
+    "weekend": "WEEKEND",
+    "longweekend": "LONG WEEKEND",
+    "week": "WEEK",
+    "oneway": "ONE WAY"
+  },
+  "footer": "PRICES ARE APPROXIMATE. ALWAYS CONFIRM WITH OPERATOR BEFORE BOOKING."
+}

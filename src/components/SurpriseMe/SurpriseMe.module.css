@@ -1,0 +1,36 @@
+.btn {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--am);
+  background: none;
+  border: 1px solid var(--am);
+  padding: 7px 16px;
+  cursor: pointer;
+  letter-spacing: 0.12em;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn:hover {
+  background: rgba(245, 166, 35, 0.1);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--am);
+  border-radius: 50%;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}

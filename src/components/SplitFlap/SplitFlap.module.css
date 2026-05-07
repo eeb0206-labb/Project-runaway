@@ -1,0 +1,68 @@
+.cell {
+  display: inline-block;
+  position: relative;
+  width: 0.72em;
+  height: 1.65em;
+  background: #111;
+  border-radius: 2px;
+  margin: 0 1px;
+  perspective: 300px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* Base character layer — centered in full cell */
+.charLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  color: var(--amb);
+}
+
+/* The animated falling flap — covers upper half, rotates forward */
+.topFlap {
+  transform-origin: bottom center;
+  background: #111;
+  z-index: 2;
+}
+
+@keyframes flapFall {
+  0%   { transform: rotateX(0deg); }
+  100% { transform: rotateX(-90deg); }
+}
+
+.falling {
+  animation: flapFall 50ms ease-in forwards;
+}
+
+/* Horizontal divider between top and bottom halves */
+.divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #000;
+  z-index: 4;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+/* Word container — renders a string of cells inline */
+.word {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* Space between word groups in a sentence */
+.wordGap {
+  display: inline-block;
+  width: 0.4em;
+}

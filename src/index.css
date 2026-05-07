@@ -1,0 +1,54 @@
+:root {
+  --bd:  #0d0d0d;
+  --bg2: #111111;
+  --am:  #f5a623;
+  --amd: #8a5c0d;
+  --amb: #ffc84a;
+  --wh:  #f0ead6;
+  --sep: #1e1a10;
+  --grn: #4caf50;
+  --red: #e05a4e;
+  --blue: #5b9bd5;
+  --font-heading: 'Bebas Neue', sans-serif;
+  --font-mono:    'Share Tech Mono', monospace;
+  --font-body:    'DM Sans', sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bd);
+  color: var(--wh);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  background: none;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+a {
+  color: var(--am);
+  text-decoration: none;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--amd); border-radius: 2px; }

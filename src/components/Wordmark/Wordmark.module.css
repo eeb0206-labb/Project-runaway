@@ -1,0 +1,32 @@
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  font-family: var(--font-heading);
+  font-size: inherit;
+  color: var(--am);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  user-select: none;
+  text-decoration: none;
+}
+
+.part {
+  display: inline-block;
+}
+
+.dot {
+  color: var(--amd);
+  margin: 0 1px;
+  font-size: 0.7em;
+}
+
+.aWrapper {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.aSvg {
+  display: block;
+}

@@ -1,0 +1,175 @@
+.panel {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--sep);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.label {
+  font-size: 9px;
+  color: var(--amd);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.input {
+  background: var(--bd);
+  border: 1px solid var(--sep);
+  color: var(--amb);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+  letter-spacing: 0.06em;
+  width: 120px;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--am);
+}
+
+.budgetWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.budgetValue {
+  font-size: 14px;
+  color: var(--amb);
+  min-width: 40px;
+  letter-spacing: 0.04em;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 2px;
+  background: var(--sep);
+  outline: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--am);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--am);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.select {
+  background: var(--bd);
+  border: 1px solid var(--sep);
+  color: var(--amb);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 8px;
+  outline: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s;
+}
+
+.select:focus {
+  border-color: var(--am);
+}
+
+.modes {
+  display: flex;
+  gap: 4px;
+}
+
+.modeBtn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--amd);
+  letter-spacing: 0.1em;
+  padding: 4px 8px;
+  border: 1px solid var(--sep);
+  background: var(--bd);
+  cursor: pointer;
+  transition: all 0.12s;
+  text-transform: uppercase;
+}
+
+.modeBtn.active {
+  color: var(--bd);
+  border-color: var(--am);
+}
+
+.modeBtn.activeTrain  { background: var(--am);  color: #000; }
+.modeBtn.activePlane  { background: var(--grn); color: #000; }
+.modeBtn.activeBus    { background: var(--blue); color: #000; }
+.modeBtn.activeFerry  { background: #9b8fcf; color: #000; }
+
+.searchBtn {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--bd);
+  background: var(--am);
+  border: none;
+  padding: 8px 20px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: background 0.15s;
+  margin-left: auto;
+}
+
+.searchBtn:hover {
+  background: var(--amb);
+}
+
+.discounts {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.discountChip {
+  font-size: 10px;
+  color: var(--amd);
+  border: 1px solid var(--sep);
+  padding: 3px 7px;
+  cursor: pointer;
+  background: var(--bd);
+  letter-spacing: 0.08em;
+  transition: all 0.12s;
+  font-family: var(--font-mono);
+}
+
+.discountChip.active {
+  color: var(--am);
+  border-color: var(--am);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.separator {
+  width: 1px;
+  height: 30px;
+  background: var(--sep);
+  flex-shrink: 0;
+}
