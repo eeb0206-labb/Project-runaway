@@ -227,6 +227,10 @@ function buildLegs(
     // Look up the exact Trainline station name; fall back to "<CODE> Airport" if unknown
     const hubStation = hubCode ? (HUB_STATION[hubCode] ?? `${hubCode} Airport`) : null
 
+    // Arrival-side: the airport the user lands at — used as the origin of the onward transit leg
+    // so Google Maps routes from the actual arrival point into the city, not from the user's home.
+    const arrivalAirport = toCode ? `${toCode} Airport` : `${destName} Airport`
+
     // Step 1: train from user's origin to the departure hub airport (never to the final destination)
     const trainToHub: Leg = hubStation
       ? { label: `1. TRAIN TO ${hubCode}`,  url: buildTrainlineUrl(origin, hubStation, date, false) }
@@ -238,8 +242,8 @@ function buildLegs(
       return [
         trainToHub,
         { label: `2. FLIGHT TO ${destCode}`, url: flightUrl },
-        // Leg 3 is at the destination — use Google Maps transit for foreign arrivals
-        { label: `3. LOCAL TRANSIT`,         url: `https://www.google.com/maps/dir/?api=1&destination=${dEnc}&travelmode=transit` },
+        // Leg 3: from the arrival airport into the city centre
+        { label: `3. INTO TOWN`,             url: buildGoogleMapsTransit(arrivalAirport, destName, date) },
       ]
     }
     if (conn === 'TRAIN → FLIGHT') {
@@ -264,7 +268,7 @@ function buildLegs(
       return [
         { label: '1. TRAIN TO PORT',  url: buildTrainlineUrl(origin, 'Dover', date, false) },
         { label: '2. BOOK FERRY',     url: 'https://www.directferries.co.uk/' },
-        { label: '3. LOCAL TRANSIT',  url: buildGoogleMapsTransit('ferry port', destName, date) },
+        { label: '3. LOCAL TRANSIT',  url: buildGoogleMapsTransit(`${destName} Ferry Terminal`, destName, date) },
       ]
     }
     return [{ label: `⛴ FERRY TO ${cityOnly(destName).toUpperCase()}`, url: 'https://www.directferries.co.uk/' }]
@@ -292,7 +296,7 @@ function buildLegs(
   // Trainline covers UK & cross-channel coaches (origin → destName is correct here
   // because the coach goes directly to the destination, no airport hub needed).
   if (t.mode === 'bus') {
-    return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildTrainlineUrl(origin, destName, date, isReturn) }]
+    return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildGoogleMapsTransit(origin, destName, date) }]
   }
 
   // Fallback — Google Maps transit rather than a broken Omio path
@@ -309,7 +313,7 @@ function buildSingleUrl(
   const isReturn = tripDirection === 'return'
 
   switch (t.mode) {
-    case 'train': return buildTrainlineUrl(origin, destName, date, isReturn)
+    case 'train': return buildGoogleMapsTransit(origin, destName, date)
     case 'plane': {
       const fromCode = t.originSkyId
       const toCode   = t.destSkyId
@@ -326,7 +330,7 @@ function buildSingleUrl(
       console.log('Generated Links:', { skyscanner, google })
       return skyscanner
     }
-    case 'bus':   return buildTrainlineUrl(origin, destName, date, isReturn)
+    case 'bus':   return buildGoogleMapsTransit(origin, destName, date)
     case 'ferry': return buildGoogleMapsTransit(origin, destName, date)
     default:      return t.bookingUrl || buildGoogleMapsTransit(origin, destName, date)
   }
