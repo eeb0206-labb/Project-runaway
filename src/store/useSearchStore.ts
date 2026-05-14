@@ -50,6 +50,7 @@ interface StoreState {
   hasSearched: boolean
   isLoading: boolean
   adminOpen: boolean
+  needsAccommodation: boolean
 
   // actions
   setOrigin: (name: string, lat?: number, lng?: number) => void
@@ -71,6 +72,7 @@ interface StoreState {
   setTripDirection: (d: 'return' | 'oneway') => void
   setDepartDate: (d: string) => void
 
+  toggleNeedsAccommodation: () => void
   runSearch: () => void
   surpriseMe: () => void
   clearFilters: () => void
@@ -451,6 +453,7 @@ export const useSearchStore = create<StoreState>((set, get) => ({
   hasSearched: false,
   isLoading: false,
   adminOpen: false,
+  needsAccommodation: false,
 
   setOrigin: (name, lat, lng) => {
     const newLat = lat ?? null
@@ -489,6 +492,7 @@ export const useSearchStore = create<StoreState>((set, get) => ({
 
   setPassengers: v => { set({ passengers: v }); reapply(get, set) },
   setSelected: d => set({ selectedDestination: d }),
+  toggleNeedsAccommodation: () => set(s => ({ needsAccommodation: !s.needsAccommodation })),
 
   setSizeFilter: s => { set({ sizeFilter: s }); reapply(get, set) },
 

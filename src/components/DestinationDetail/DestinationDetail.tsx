@@ -122,14 +122,25 @@ function buildTrainlineUrl(
 /** Google Maps transit deep-link — reliable fallback for any surface leg where
  *  a direct booking URL is unavailable (ferries, cross-border coaches, onward
  *  European trains after Eurostar, etc.).  travelmode=transit covers rail, metro,
- *  bus, and ferry at the destination. */
-function buildGoogleMapsTransit(from: string, to: string): string {
-  return (
+ *  bus, and ferry at the destination.
+ *
+ *  When a departure date is supplied, appends ttype/date/time so Google Maps
+ *  opens the exact schedule rather than the generic route overview. */
+function buildGoogleMapsTransit(from: string, to: string, date: Date | null = null): string {
+  let url = (
     `https://www.google.com/maps/dir/?api=1` +
     `&origin=${encodeURIComponent(from)}` +
     `&destination=${encodeURIComponent(to)}` +
     `&travelmode=transit`
   )
+  if (date) {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    // Google Maps transit departure time — YYYY-MM-DD + 09:00 default
+    url += `&ttype=dep&date=${y}-${m}-${d}&time=0900`
+  }
+  return url
 }
 
 /** Convert a YYYY-MM-DD ISO string to the YYMMDD path segment Skyscanner expects. */
@@ -253,7 +264,7 @@ function buildLegs(
       return [
         { label: '1. TRAIN TO PORT',  url: buildTrainlineUrl(origin, 'Dover', date, false) },
         { label: '2. BOOK FERRY',     url: 'https://www.directferries.co.uk/' },
-        { label: '3. LOCAL TRANSIT',  url: `https://www.google.com/maps/dir/?api=1&destination=${dEnc}&travelmode=transit` },
+        { label: '3. LOCAL TRANSIT',  url: buildGoogleMapsTransit('ferry port', destName, date) },
       ]
     }
     return [{ label: `⛴ FERRY TO ${cityOnly(destName).toUpperCase()}`, url: 'https://www.directferries.co.uk/' }]
@@ -264,13 +275,13 @@ function buildLegs(
     if (conn === 'EUROSTAR → TRAIN') {
       return [
         { label: '1. EUROSTAR TO PARIS', url: buildTrainlineUrl(origin, 'Paris Gare du Nord', date, false) },
-        { label: '2. ONWARD TRAIN',      url: buildGoogleMapsTransit('Paris', destName) },
+        { label: '2. ONWARD TRAIN',      url: buildGoogleMapsTransit('Paris', destName, date) },
       ]
     }
     if (conn === 'EUROSTAR + METRO') {
       return [
         { label: '1. EUROSTAR',      url: buildTrainlineUrl(origin, 'Paris Gare du Nord', date, false) },
-        { label: '2. LOCAL TRANSIT', url: `https://www.google.com/maps/dir/?api=1&destination=${dEnc}&travelmode=transit` },
+        { label: '2. LOCAL TRANSIT', url: buildGoogleMapsTransit('Paris Gare du Nord', destName, date) },
       ]
     }
     // Direct UK/European train — Trainline covers it
@@ -285,7 +296,7 @@ function buildLegs(
   }
 
   // Fallback — Google Maps transit rather than a broken Omio path
-  return [{ label: `BOOK ${(t.mode as string).toUpperCase()}`, url: buildGoogleMapsTransit(origin, destName) }]
+  return [{ label: `BOOK ${(t.mode as string).toUpperCase()}`, url: buildGoogleMapsTransit(origin, destName, date) }]
 }
 
 function buildSingleUrl(
@@ -316,8 +327,8 @@ function buildSingleUrl(
       return skyscanner
     }
     case 'bus':   return buildTrainlineUrl(origin, destName, date, isReturn)
-    case 'ferry': return buildGoogleMapsTransit(origin, destName)
-    default:      return t.bookingUrl || buildGoogleMapsTransit(origin, destName)
+    case 'ferry': return buildGoogleMapsTransit(origin, destName, date)
+    default:      return t.bookingUrl || buildGoogleMapsTransit(origin, destName, date)
   }
 }
 
@@ -707,7 +718,7 @@ function buildEmailText(
 }
 
 export function DestinationDetail() {
-  const { selectedDestination, setSelected, origin, tripDirection, departDate } = useSearchStore()
+  const { selectedDestination, setSelected, origin, tripDirection, departDate, needsAccommodation } = useSearchStore()
   const date = computeDepartDate(departDate)
   console.log('[DestinationDetail] tripDirection:', tripDirection)
   const [emailOpen, setEmailOpen] = useState(false)
@@ -859,6 +870,58 @@ export function DestinationDetail() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Where to Stay ─────────────────────────────────────────────
+             Always renders when the toggle is ON — specific options when
+             we have curated data, generic Booking/Hostelworld fallback
+             otherwise (handles stale store objects + unknown destinations). */}
+        {needsAccommodation && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>🛏 WHERE TO STAY</div>
+            <div className={styles.accomGrid}>
+              {dest.accommodation && dest.accommodation.length > 0
+                ? dest.accommodation.map((a, i) => (
+                    <a
+                      key={i}
+                      href={a.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.accomCard}
+                    >
+                      <span className={styles.accomType}>{a.type.toUpperCase()}</span>
+                      <span className={styles.accomName}>{a.name}</span>
+                      <span className={styles.accomPrice}>{a.price}</span>
+                      <span className={styles.accomCta}>BOOK →</span>
+                    </a>
+                  ))
+                : <>
+                    <a
+                      href={`https://www.booking.com/searchresults.en-gb.html?ss=${encodeURIComponent(dest.name)}&lang=en-gb`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.accomCardBooking}
+                    >
+                      <span className={styles.accomType}>BOOKING.COM</span>
+                      <span className={styles.accomName}>Hotels &amp; Apartments in {dest.name}</span>
+                      <span className={styles.accomPrice}>All budgets</span>
+                      <span className={styles.accomCta}>SEARCH →</span>
+                    </a>
+                    <a
+                      href={`https://www.hostelworld.com/hostelworldgroup/en/s/?q=${encodeURIComponent(dest.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.accomCardHostelworld}
+                    >
+                      <span className={styles.accomType}>HOSTELWORLD</span>
+                      <span className={styles.accomName}>Hostels in {dest.name}</span>
+                      <span className={styles.accomPrice}>Budget options</span>
+                      <span className={styles.accomCta}>SEARCH →</span>
+                    </a>
+                  </>
+              }
+            </div>
           </div>
         )}
       </div>

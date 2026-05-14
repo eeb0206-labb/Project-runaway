@@ -125,6 +125,7 @@ export function SearchPanel() {
     runSearch, isLoading,
     content, clearFilters,
     availableCountries,
+    needsAccommodation, toggleNeedsAccommodation,
   } = useSearchStore()
 
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -313,6 +314,20 @@ export function SearchPanel() {
               )
             })}
           </div>
+        </div>
+
+        <div className={styles.separator} />
+
+        {/* Accommodation toggle */}
+        <div className={styles.group}>
+          <span className={styles.label}>STAY</span>
+          <button
+            className={`${styles.chip} ${needsAccommodation ? styles.chipAmber : ''}`}
+            onClick={toggleNeedsAccommodation}
+            title="Show accommodation options in destination cards"
+          >
+            🛏 {needsAccommodation ? 'HOTEL ON' : 'HOTEL OFF'}
+          </button>
         </div>
 
         <div className={styles.separator} />

@@ -12,6 +12,7 @@
 
 import type { CityEntry, Destination, Transport, TripType, TimeAtDest } from '../types'
 import { haversineKm } from './geocoding'
+import { ACCOMMODATION } from '../data/accommodation'
 
 const UK_COUNTRIES = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland'])
 const EUROSTAR_COUNTRIES = new Set(['France', 'Belgium', 'Netherlands'])
@@ -207,5 +208,6 @@ export function computeDestination(
     itinerary: [],
     tripCompatibility: computeTripCompat(distanceKm),
     timeAtDestCompatibility: computeTimeCompat(distanceKm),
+    accommodation: ACCOMMODATION[city.id] ?? [],
   }
 }

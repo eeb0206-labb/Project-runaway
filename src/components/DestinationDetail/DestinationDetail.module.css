@@ -908,3 +908,98 @@
   gap: 10px;
   width: 100%;
 }
+
+/* ── Accommodation cards ──────────────────────────────────────────────────── */
+
+.accomGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.accomCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg, #0d0d0d);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+  position: relative;
+  overflow: hidden;
+}
+
+.accomCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--am, #d97706);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+}
+
+.accomCard:hover {
+  border-color: var(--am, #d97706);
+  background: rgba(217,119,6,0.06);
+  transform: translateY(-1px);
+}
+
+.accomCard:hover::before {
+  transform: scaleX(1);
+}
+
+.accomType {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--am, #d97706);
+  opacity: 0.85;
+}
+
+.accomName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg, #f0ede8);
+  line-height: 1.3;
+}
+
+.accomPrice {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg, #f0ede8);
+  margin-top: 2px;
+}
+
+.accomCta {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--am, #d97706);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* Brand-colored fallback cards for cities without curated accommodation data */
+
+.accomCardBooking {
+  composes: accomCard;
+  border-color: rgba(0, 53, 128, 0.5);
+}
+.accomCardBooking::before { background: #003580; }
+.accomCardBooking:hover   { border-color: #003580; background: rgba(0, 53, 128, 0.08); }
+.accomCardBooking .accomType { color: #4a90d9; }
+.accomCardBooking .accomCta  { color: #4a90d9; }
+
+.accomCardHostelworld {
+  composes: accomCard;
+  border-color: rgba(122, 193, 67, 0.4);
+}
+.accomCardHostelworld::before { background: #7ac143; }
+.accomCardHostelworld:hover   { border-color: #7ac143; background: rgba(122, 193, 67, 0.07); }
+.accomCardHostelworld .accomType { color: #7ac143; }
+.accomCardHostelworld .accomCta  { color: #7ac143; }

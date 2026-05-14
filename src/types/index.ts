@@ -39,6 +39,13 @@ export interface Transport {
   surfaceEstimateGBP?: number
 }
 
+export interface Accommodation {
+  name:  string
+  type:  string       // 'Hostel' | 'Hotel' | 'B&B' | 'Apartment' etc.
+  price: string       // e.g. '£35/night'
+  link:  string       // Booking.com search URL
+}
+
 export interface ItineraryStep {
   time: string
   icon: string
@@ -64,6 +71,7 @@ export interface Destination {
     studentUniverse?: boolean
   }
   itinerary: ItineraryStep[]
+  accommodation?: Accommodation[]
   tripCompatibility: Record<TripType, boolean>
   timeAtDestCompatibility: Record<TimeAtDest, boolean>
 }
