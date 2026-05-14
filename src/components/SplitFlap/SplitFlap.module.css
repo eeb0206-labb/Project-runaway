@@ -22,7 +22,7 @@
   line-height: 1;
   user-select: none;
   pointer-events: none;
-  color: var(--amb);
+  color: #FFFFFF;
 }
 
 /* The animated falling flap — covers upper half, rotates forward */

@@ -1,16 +1,16 @@
 {
   "theme": {
     "colors": {
-      "bd": "#0d0d0d",
-      "bg2": "#111111",
-      "am": "#f5a623",
-      "amd": "#8a5c0d",
-      "amb": "#ffc84a",
-      "wh": "#f0ead6",
-      "sep": "#1e1a10",
-      "grn": "#4caf50",
-      "red": "#e05a4e",
-      "blue": "#5b9bd5"
+      "bd": "#1C1C1F",
+      "bg2": "#252528",
+      "am": "#F59E0B",
+      "amd": "#D97706",
+      "amb": "#FCD34D",
+      "wh": "#EFEFEF",
+      "sep": "#3A3A3F",
+      "grn": "#4ADE80",
+      "red": "#F87171",
+      "blue": "#60A5FA"
     },
     "fonts": {
       "heading": "Bebas Neue",
@@ -22,10 +22,10 @@
     }
   },
   "ui": {
-    "tagline": "How far can you run?",
+    "tagline": "Find your escape route",
     "subTagline": "Escape radius calculator",
     "defaultOrigin": "London",
-    "defaultBudget": 150,
+    "defaultBudget": 100,
     "currency": "GBP",
     "boardColumns": {
       "showRank": true,

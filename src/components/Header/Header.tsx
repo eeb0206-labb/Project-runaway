@@ -37,9 +37,11 @@ export function Header() {
             </NavLink>
           </>
         )}
-        <button className={styles.adminBtn} onClick={toggleAdmin} title="Admin (Ctrl+Shift+A)">
-          ⚙
-        </button>
+        {import.meta.env.DEV && (
+          <button className={styles.adminBtn} onClick={toggleAdmin} title="Admin (Ctrl+Shift+A)">
+            ⚙
+          </button>
+        )}
       </div>
     </header>
   )

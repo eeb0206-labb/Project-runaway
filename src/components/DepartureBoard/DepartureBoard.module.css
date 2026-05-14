@@ -161,6 +161,73 @@
 .modeBus    { background: var(--blue); }
 .modeFerry  { background: #9b8fcf; }
 
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .headerRow {
+    grid-template-columns: 24px 1fr 75px 65px;
+    padding: 5px 10px;
+    gap: 4px;
+  }
+
+  /* Hide VIA and KM columns on mobile */
+  .headerRow > :nth-child(4),
+  .headerRow > :nth-child(5) {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: 24px 1fr 75px 65px;
+    padding: 6px 10px;
+    gap: 4px;
+    height: auto;
+    min-height: 52px;
+  }
+
+  /* Hide route/operator (VIA) and distance (KM) columns */
+  .route,
+  .distance {
+    display: none;
+  }
+
+  .rank {
+    font-size: 10px;
+  }
+
+  .destName {
+    font-size: 12px;
+  }
+
+  .destCountry {
+    font-size: 9px;
+  }
+
+  /* Smaller font = smaller split-flap cells so they fit narrower columns */
+  .travelTime {
+    font-size: 10px;
+  }
+
+  .price {
+    font-size: 10px;
+  }
+
+  .tags {
+    position: static;
+    margin-top: 2px;
+    grid-column: 2 / -1;
+  }
+
+  .toolbar {
+    padding: 6px 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .count {
+    font-size: 10px;
+  }
+}
+
 /* Empty / loading states */
 .empty {
   display: flex;
@@ -199,4 +266,60 @@
 @keyframes scan {
   0%   { transform: scaleX(0.1); opacity: 0.3; }
   100% { transform: scaleX(1);   opacity: 1; }
+}
+
+/* ── Skeleton loading rows ──────────────────────────────────────────────── */
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 40px 1fr 90px 1fr 70px 80px;
+  padding: 0 20px;
+  gap: 8px;
+  height: 52px;
+  align-items: center;
+  border-bottom: 1px solid var(--sep);
+  opacity: 0;
+  animation: skeletonFadeIn 0.3s ease forwards;
+}
+
+.skeletonRow:nth-child(even) {
+  background: var(--bg2);
+}
+
+@keyframes skeletonFadeIn {
+  to { opacity: 1; }
+}
+
+.skeletonDest {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skeletonPulse {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--sep);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonSub {
+  height: 8px;
+  width: 60px;
+  border-radius: 2px;
+  background: var(--sep);
+  opacity: 0.5;
+  animation: shimmer 1.4s ease-in-out infinite 0.2s;
+}
+
+.skeletonCell {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--sep);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.7; }
 }

@@ -40,7 +40,7 @@ function AppShell() {
         </Routes>
       </div>
       <Ticker />
-      <Admin />
+      {import.meta.env.DEV && <Admin />}
     </div>
   )
 }

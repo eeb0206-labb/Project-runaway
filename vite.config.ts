@@ -28,6 +28,8 @@ function adminApiPlugin() {
       server.middlewares.use(async (req: any, res: any, next: () => void) => {
         if (!req.url?.startsWith('/api/')) return next()
         const url = req.url.split('?')[0]
+        // Live-data endpoint is handled by the Netlify Functions proxy — skip here
+        if (url === '/api/get-routes') return next()
 
         // ── GET /api/admin-data ──────────────────────────────────────────────
         if (url === '/api/admin-data' && req.method === 'GET') {
@@ -129,5 +131,18 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5174 },
+  server: {
+    port: 3000,
+    strictPort: true,   // fail fast if 3000 is taken rather than silently bumping to 5174
+    proxy: {
+      // Forward live-data endpoint to Netlify Functions dev server (netlify dev runs on 8888).
+      // Falls back silently if netlify dev isn't running — frontend uses static estimates.
+      '/api/get-routes': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+        rewrite: (path: string) =>
+          path.replace('/api/get-routes', '/.netlify/functions/get-routes'),
+      },
+    },
+  },
 })

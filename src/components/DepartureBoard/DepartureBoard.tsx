@@ -12,20 +12,24 @@ function modeClass(mode: string) {
   return styles.modeFerry
 }
 
-function cheapestTransport(dest: Destination) {
-  return dest.transport.reduce((min, t) =>
-    t.returnPriceGBP < min.returnPriceGBP ? t : min,
-  )
+function cheapestTransport(dest: Destination, direction: 'return' | 'oneway') {
+  return dest.transport.reduce((min, t) => {
+    const price = direction === 'oneway' ? t.priceGBP : t.returnPriceGBP
+    const minPrice = direction === 'oneway' ? min.priceGBP : min.returnPriceGBP
+    return price < minPrice ? t : min
+  })
 }
 
-function BoardRow({ dest, index, selected, onClick }: {
+function BoardRow({ dest, index, selected, onClick, direction }: {
   dest: Destination
   index: number
   selected: boolean
   onClick: () => void
+  direction: 'return' | 'oneway'
 }) {
-  const transport = cheapestTransport(dest)
-  const stagger = index * 60
+  const transport = cheapestTransport(dest, direction)
+  const displayPrice = direction === 'oneway' ? transport.priceGBP : transport.returnPriceGBP
+  const stagger = Math.min(index * 28, 800)
 
   return (
     <motion.div
@@ -44,10 +48,10 @@ function BoardRow({ dest, index, selected, onClick }: {
       <span className={styles.destination}>
         <span className={styles.destName}>
           <SplitFlap
-            value={dest.name.toUpperCase()}
-            length={16}
+            value={dest.name}
+            length={20}
             baseDelay={stagger}
-            charDelay={18}
+            charDelay={12}
             speed={44}
           />
         </span>
@@ -66,12 +70,12 @@ function BoardRow({ dest, index, selected, onClick }: {
 
       {/* Distance */}
       <span className={styles.distance}>
-        <SplitFlap value={`${dest.distanceKm}KM`} length={7} baseDelay={stagger + 140} charDelay={18} speed={44} />
+        <SplitFlap value={`${Math.round(dest.distanceKm)}KM`} length={7} baseDelay={stagger + 140} charDelay={18} speed={44} />
       </span>
 
       {/* Price */}
       <span className={styles.price}>
-        <SplitFlap value={`£${transport.returnPriceGBP}`} length={7} baseDelay={stagger + 180} charDelay={18} speed={44} />
+        <SplitFlap value={`£${displayPrice}`} length={7} baseDelay={stagger + 180} charDelay={18} speed={44} />
       </span>
 
       {/* Tags (first 2 only) */}
@@ -86,16 +90,59 @@ function BoardRow({ dest, index, selected, onClick }: {
   )
 }
 
+const SORT_LABELS: Record<string, string> = {
+  'distance':      'NEAREST FIRST',
+  'distance-desc': 'FURTHEST FIRST',
+  'price':         'CHEAPEST FIRST',
+  'time':          'FASTEST FIRST',
+  'name':          'A → Z',
+  'population':    'BIGGEST FIRST',
+}
+
+function SkeletonRow({ index }: { index: number }) {
+  return (
+    <div className={styles.skeletonRow} style={{ animationDelay: `${index * 60}ms` }}>
+      <span className={styles.rank}>{String(index + 1).padStart(2, '0')}</span>
+      <span className={styles.skeletonDest}>
+        <span className={styles.skeletonPulse} style={{ width: `${100 + (index % 5) * 20}px` }} />
+        <span className={styles.skeletonSub} />
+      </span>
+      <span className={styles.skeletonCell} style={{ width: '60px' }} />
+      <span className={styles.skeletonCell} style={{ width: '120px' }} />
+      <span className={styles.skeletonCell} style={{ width: '50px' }} />
+      <span className={styles.skeletonCell} style={{ width: '44px' }} />
+    </div>
+  )
+}
+
 export function DepartureBoard() {
-  const { results, selectedDestination, setSelected, isLoading, hasSearched, content } = useSearchStore()
+  const { results, selectedDestination, setSelected, isLoading, hasSearched, content, settings, sortBy, tripDirection } = useSearchStore()
+
+  // Column header labels — editable via Admin → Content → Board Column Headers
+  const col = content.boardColumns ?? {}
+  const hRank  = col.rank        ?? '#'
+  const hDest  = col.destination ?? 'DESTINATION'
+  const hTime  = col.travelTime  ?? 'TRAVEL'
+  const hVia   = col.route       ?? 'VIA'
+  const hKm    = col.distance    ?? 'KM'
+  const hPrice = col.price       ?? 'FROM'
 
   if (isLoading) {
     return (
       <div className={styles.wrap}>
-        <div className={styles.empty}>
-          <span className={styles.emptyTagline}>SCANNING ROUTES</span>
-          <div className={styles.scanLine} />
-          <span className={styles.emptyText}>{content.statusMessages?.searching}</span>
+        <div className={styles.toolbar}>
+          <span className={styles.count}>{content.statusMessages?.searching ?? 'SCANNING ROUTES…'}</span>
+        </div>
+        <div className={styles.headerRow}>
+          <span className={styles.headerCell}>{hRank}</span>
+          <span className={styles.headerCell}>{hDest}</span>
+          <span className={styles.headerCell}>{hTime}</span>
+          <span className={styles.headerCell}>{hVia}</span>
+          <span className={styles.headerCell}>{hKm}</span>
+          <span className={styles.headerCell}>{hPrice}</span>
+        </div>
+        <div className={styles.list}>
+          {Array.from({ length: 12 }).map((_, i) => <SkeletonRow key={i} index={i} />)}
         </div>
       </div>
     )
@@ -105,8 +152,8 @@ export function DepartureBoard() {
     return (
       <div className={styles.wrap}>
         <div className={styles.empty}>
-          <span className={styles.emptyTagline}>HOW FAR CAN YOU RUN?</span>
-          <span className={styles.emptyText}>SET YOUR BUDGET AND HIT SEARCH</span>
+          <span className={styles.emptyTagline}>{settings.ui.tagline.toUpperCase()}</span>
+          <span className={styles.emptyText}>{content.statusMessages?.ready ?? 'SET YOUR BUDGET AND HIT SEARCH'}</span>
         </div>
       </div>
     )
@@ -127,19 +174,19 @@ export function DepartureBoard() {
     <div className={styles.wrap}>
       <div className={styles.toolbar}>
         <span className={styles.count}>
-          <strong>{results.length}</strong> DESTINATIONS WITHIN BUDGET · SORTED BY DISTANCE
+          <strong>{results.length}</strong> DESTINATIONS WITHIN BUDGET · {SORT_LABELS[sortBy] ?? 'SORTED'}
         </span>
         <SurpriseMe />
       </div>
 
-      {/* Column headers */}
+      {/* Column headers — labels come from content.boardColumns, editable in Admin */}
       <div className={styles.headerRow}>
-        <span className={styles.headerCell}>#</span>
-        <span className={styles.headerCell}>DESTINATION</span>
-        <span className={styles.headerCell}>TRAVEL</span>
-        <span className={styles.headerCell}>VIA</span>
-        <span className={styles.headerCell}>KM</span>
-        <span className={styles.headerCell}>FROM</span>
+        <span className={styles.headerCell}>{hRank}</span>
+        <span className={styles.headerCell}>{hDest}</span>
+        <span className={styles.headerCell}>{hTime}</span>
+        <span className={styles.headerCell}>{hVia}</span>
+        <span className={styles.headerCell}>{hKm}</span>
+        <span className={styles.headerCell}>{hPrice}</span>
       </div>
 
       <div className={styles.list}>
@@ -151,6 +198,7 @@ export function DepartureBoard() {
               index={i}
               selected={selectedDestination?.id === dest.id}
               onClick={() => setSelected(selectedDestination?.id === dest.id ? null : dest)}
+              direction={tripDirection}
             />
           ))}
         </AnimatePresence>

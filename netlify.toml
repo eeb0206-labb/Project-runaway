@@ -1,4 +1,21 @@
+[build]
+  command   = "npm run build"
+  publish   = "dist"
+  functions = "netlify/functions"
+
+[dev]
+  framework  = "vite"
+  targetPort = 3000     # must match vite.config.ts server.port
+
+# Forward /api/* to the matching serverless function.
+# Must come BEFORE the SPA catch-all redirect.
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from   = "/api/*"
+  to     = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA fallback — everything else serves index.html
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
   status = 200

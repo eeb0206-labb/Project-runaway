@@ -5,7 +5,7 @@ import { useSearchStore } from '../../store/useSearchStore'
 import type { Destination } from '../../types'
 import styles from './MapView.module.css'
 
-const LONDON_COORDS: [number, number] = [51.5074, -0.1278]
+const DEFAULT_COORDS: [number, number] = [51.5074, -0.1278]
 
 const TRANSPORT_COLORS: Record<string, string> = {
   train: '#f5a623',
@@ -21,24 +21,28 @@ function modeColor(dest: Destination): string {
   return TRANSPORT_COLORS[cheapest.mode] ?? '#f5a623'
 }
 
-function FitBounds({ results }: { results: Destination[] }) {
+function FitBounds({ originCoords, results }: { originCoords: [number, number]; results: Destination[] }) {
   const map = useMap()
   useEffect(() => {
     if (results.length === 0) return
-    const bounds: [number, number][] = [LONDON_COORDS, ...results.map(d => [d.lat, d.lng] as [number, number])]
+    const bounds: [number, number][] = [originCoords, ...results.map(d => [d.lat, d.lng] as [number, number])]
     map.fitBounds(bounds, { padding: [40, 40] })
-  }, [results, map])
+  }, [results, originCoords, map])
   return null
 }
 
 export function MapViewComponent() {
-  const { results, selectedDestination, setSelected } = useSearchStore()
+  const { results, selectedDestination, setSelected, originLat, originLng, origin } = useSearchStore()
+  const originCoords: [number, number] = [
+    originLat ?? DEFAULT_COORDS[0],
+    originLng ?? DEFAULT_COORDS[1],
+  ]
 
   return (
     <div className={styles.wrap}>
       <MapContainer
         className={styles.map}
-        center={LONDON_COORDS}
+        center={originCoords}
         zoom={5}
         scrollWheelZoom
       >
@@ -49,17 +53,17 @@ export function MapViewComponent() {
           maxZoom={19}
         />
 
-        {results.length > 0 && <FitBounds results={results} />}
+        {results.length > 0 && <FitBounds originCoords={originCoords} results={results} />}
 
         {/* Origin marker — pulsing amber dot */}
         <CircleMarker
-          center={LONDON_COORDS}
+          center={originCoords}
           radius={8}
           pathOptions={{ color: '#ffc84a', fillColor: '#f5a623', fillOpacity: 1, weight: 2 }}
         >
           <Tooltip permanent direction="top" offset={[0, -10]}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#f5a623', background: '#111', padding: '2px 6px', letterSpacing: '0.1em' }}>
-              LONDON
+              {origin.toUpperCase()}
             </span>
           </Tooltip>
         </CircleMarker>
@@ -71,7 +75,7 @@ export function MapViewComponent() {
           return (
             <span key={dest.id}>
               <Polyline
-                positions={[LONDON_COORDS, [dest.lat, dest.lng]]}
+                positions={[originCoords, [dest.lat, dest.lng]]}
                 pathOptions={{
                   color,
                   weight: isSelected ? 2 : 1,
