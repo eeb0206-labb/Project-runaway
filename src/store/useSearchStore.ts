@@ -134,16 +134,13 @@ function filterAndSort(
     // Transport + budget
     // A journey is only valid if its primary mode AND every mode it connects through
     // are all enabled.  e.g. "TRAIN → FLIGHT → TRAIN" is excluded if trains are off.
-    const validTransport = dest.transport.filter(t => {
-      if (!modes.includes(t.mode)) return false
-      if (t.requiresConnection) {
-        const conn = t.requiresConnection.toUpperCase()
-        if (!modes.includes('train') && conn.includes('TRAIN')) return false
-        if (!modes.includes('bus')   && (conn.includes('BUS') || conn.includes('COACH'))) return false
-        if (!modes.includes('ferry') && conn.includes('FERRY')) return false
-      }
-      return true
-    })
+    // Only filter on the PRIMARY transport mode the user has chosen.
+    // The requiresConnection string (e.g. 'TRAIN → FLIGHT → TRAIN') describes
+    // the practical legs needed to complete a flight/ferry journey — it is NOT
+    // a separate user-selectable transport type.  Checking it against `modes`
+    // caused all flight routes to vanish when Train was deselected, because
+    // every international flight has a train leg to the departure airport.
+    const validTransport = dest.transport.filter(t => modes.includes(t.mode))
     if (validTransport.length === 0) return false
 
     const cheapest = validTransport.reduce((min, t) =>

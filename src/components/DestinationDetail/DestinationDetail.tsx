@@ -102,19 +102,24 @@ function buildTrainlineUrl(
   date: Date | null,
   isReturn: boolean,
 ): string {
-  // Trainline only accepts YYYY-MM-DD in the date params — never pass a time component.
-  const outDate = toISODate(date ?? new Date())
+  // Trainline's deep-link requires a full ISO 8601 datetime (YYYY-MM-DDTHH:MM:SS).
+  // Passing only YYYY-MM-DD causes a blank results page / white screen.
+  // The colons in the time component must be percent-encoded (%3A) — use
+  // encodeURIComponent on the whole datetime string to be safe.
+  const outDate     = toISODate(date ?? new Date())
+  const outDateTime = encodeURIComponent(`${outDate}T07:00:00`)
   let url =
     `https://www.thetrainline.com/book/results` +
     `?origin=${encodeURIComponent(cityOnly(from))}` +
     `&destination=${encodeURIComponent(to)}` +
-    `&outwardDate=${outDate}` +
+    `&outwardDate=${outDateTime}` +
     `&outwardDateType=departAfter` +
     `&journeySearchType=${isReturn ? 'return' : 'single'}`
   if (isReturn) {
-    const retDate = new Date(`${outDate}T00:00:00`)
+    const retDate     = new Date(`${outDate}T00:00:00`)
     retDate.setDate(retDate.getDate() + 7)
-    url += `&inwardDate=${toISODate(retDate)}&inwardDateType=departAfter`
+    const retDateTime = encodeURIComponent(`${toISODate(retDate)}T07:00:00`)
+    url += `&inwardDate=${retDateTime}&inwardDateType=departAfter`
   }
   return url
 }
@@ -227,9 +232,12 @@ function buildLegs(
     // Look up the exact Trainline station name; fall back to "<CODE> Airport" if unknown
     const hubStation = hubCode ? (HUB_STATION[hubCode] ?? `${hubCode} Airport`) : null
 
-    // Arrival-side: the airport the user lands at — used as the origin of the onward transit leg
-    // so Google Maps routes from the actual arrival point into the city, not from the user's home.
-    const arrivalAirport = toCode ? `${toCode} Airport` : `${destName} Airport`
+    // Arrival-side: the airport the user lands at — origin for the onward transit leg.
+    // Always use the human-readable city name (e.g. "Barcelona Airport") rather than the
+    // raw IATA code (e.g. "BCN Airport") because Google Maps reliably geocodes plain city
+    // names but may silently fall back to the user's current device location for IATA codes,
+    // producing the "Lincoln trap" where every INTO TOWN link originates from the user's home.
+    const arrivalAirport = `${cityOnly(destName)} Airport`
 
     // Step 1: train from user's origin to the departure hub airport (never to the final destination)
     const trainToHub: Leg = hubStation
@@ -722,7 +730,7 @@ function buildEmailText(
 }
 
 export function DestinationDetail() {
-  const { selectedDestination, setSelected, origin, tripDirection, departDate, needsAccommodation } = useSearchStore()
+  const { selectedDestination, setSelected, origin, tripDirection, departDate, needsAccommodation, modes } = useSearchStore()
   const date = computeDepartDate(departDate)
   console.log('[DestinationDetail] tripDirection:', tripDirection)
   const [emailOpen, setEmailOpen] = useState(false)
@@ -737,6 +745,15 @@ export function DestinationDetail() {
 
   if (!selectedDestination) return null
   const dest = selectedDestination
+
+  // Only show transport options whose primary mode is currently enabled.
+  // e.g. if Train is deselected, National Rail cards are hidden and 'National Rail'
+  // never appears alongside a bus card — even though the destination still
+  // matched because it has a bus/flight option.
+  // Fall back to ALL transports if somehow modes array is empty.
+  const visibleTransport = modes.length > 0
+    ? dest.transport.filter(t => modes.includes(t.mode))
+    : dest.transport
 
   const emailText = dest ? buildEmailText(dest, origin, date, tripDirection) : ''
   const checkIn  = date ? toISODate(date) : ''
@@ -811,7 +828,7 @@ export function DestinationDetail() {
               className={styles.openAllBtn}
               onClick={() => {
                 let blocked = false
-                dest.transport.forEach(t => {
+                visibleTransport.forEach(t => {
                   const w = window.open(buildSingleUrl(t, origin, dest.name, date, tripDirection), '_blank')
                   if (!w) blocked = true
                 })
@@ -826,7 +843,7 @@ export function DestinationDetail() {
               ⚠ Popup blocked — click the icon in your address bar to allow popups for this site, then try again.
             </div>
           )}
-          {dest.transport.map((t, i) => (
+          {visibleTransport.map((t, i) => (
             <TransportCard
               key={i} t={t} direction={tripDirection}
               origin={origin} destName={dest.name} date={date}
@@ -961,7 +978,7 @@ export function DestinationDetail() {
 
               {/* Journey legs */}
               <div className={styles.emailSection} style={{ marginTop: 14 }}>HOW TO GET THERE</div>
-              {dest.transport.map((t, i) => {
+              {visibleTransport.map((t, i) => {
                 const legs = buildLegs(t, origin, dest.name, date, tripDirection)
                 const price = (tripDirection === 'oneway' ? t.priceGBP : t.returnPriceGBP) ?? 0
                 return (
