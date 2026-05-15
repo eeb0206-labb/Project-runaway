@@ -96,7 +96,7 @@ export function estimateTransport(
       travelTime: fmtMins(trainMins),
       priceGBP: trainPrice,
       returnPriceGBP: Math.round(trainPrice * 1.9),
-      bookingUrl: `https://www.thetrainline.com/train-times/${oSlug}-to-${dSlug}`,
+      bookingUrl: `https://www.rome2rio.com/map/${encodeURIComponent(originName)}/${encodeURIComponent(destName)}`,
       requiresConnection: trainConnection,
     })
   }

@@ -51,7 +51,7 @@ function toISODate(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}` // YYYY-MM-DD for Trainline ?departOn= and Google Flights
+  return `${y}-${m}-${day}` // YYYY-MM-DD — used by Rome2Rio, Google Flights, and Google Maps
 }
 
 function toNaturalDate(d: Date): string {
@@ -65,9 +65,9 @@ function cityOnly(s: string): string {
   return s.split(',')[0].trim()
 }
 
-/** Map departure-hub IATA codes to their Trainline-searchable rail station names.
- *  These are the rail terminals inside or directly serving the airport, so a Trainline
- *  ticket to this station drops the traveller right at the check-in terminal. */
+/** Map departure-hub IATA codes to human-readable airport names used as the
+ *  "to" destination in Rome2Rio links — e.g. Rome2Rio "Lincoln → London Stansted Airport"
+ *  returns train + coach options to the correct terminal. */
 const HUB_STATION: Record<string, string> = {
   // London airports
   STN: 'London Stansted Airport',
@@ -90,38 +90,15 @@ const HUB_STATION: Record<string, string> = {
   LON: 'London St Pancras International',
 }
 
-/** Build a Trainline deep-link for UK rail (including Eurostar).
- *  Uses explicit encodeURIComponent so station names with spaces encode as %20
- *  (Trainline requires percent-encoding, not the + that URLSearchParams produces).
+/** Rome2Rio multi-modal trip planner — replaces Trainline entirely.
+ *  Rome2Rio handles trains, coaches, ferries, and flights in a single URL and
+ *  never white-screens regardless of origin/destination name format.
  *
- *  One-way  → journeySearchType=single
- *  Return   → journeySearchType=return + inwardDate 7 days after outward */
-function buildTrainlineUrl(
-  from: string,
-  to: string,
-  date: Date | null,
-  isReturn: boolean,
-): string {
-  // Trainline's deep-link requires a full ISO 8601 datetime (YYYY-MM-DDTHH:MM:SS).
-  // Passing only YYYY-MM-DD causes a blank results page / white screen.
-  // The colons in the time component must be percent-encoded (%3A) — use
-  // encodeURIComponent on the whole datetime string to be safe.
-  const outDate     = toISODate(date ?? new Date())
-  const outDateTime = encodeURIComponent(`${outDate}T07:00:00`)
-  let url =
-    `https://www.thetrainline.com/book/results` +
-    `?origin=${encodeURIComponent(cityOnly(from))}` +
-    `&destination=${encodeURIComponent(to)}` +
-    `&outwardDate=${outDateTime}` +
-    `&outwardDateType=departAfter` +
-    `&journeySearchType=${isReturn ? 'return' : 'single'}`
-  if (isReturn) {
-    const retDate     = new Date(`${outDate}T00:00:00`)
-    retDate.setDate(retDate.getDate() + 7)
-    const retDateTime = encodeURIComponent(`${toISODate(retDate)}T07:00:00`)
-    url += `&inwardDate=${retDateTime}&inwardDateType=departAfter`
-  }
-  return url
+ *  URL structure: https://www.rome2rio.com/map/{origin}/{destination}
+ *  Rome2Rio shows fare estimates and links to booking for every viable mode,
+ *  making it the most useful single link for any "how do I get there?" question. */
+function buildRome2RioUrl(from: string, to: string): string {
+  return `https://www.rome2rio.com/map/${encodeURIComponent(cityOnly(from))}/${encodeURIComponent(to)}`
 }
 
 /** Google Maps transit deep-link — reliable fallback for any surface leg where
@@ -226,10 +203,10 @@ function buildLegs(
       flightUrl = buildGoogleFlightsUrl('LON', destName, outwardISO, isReturn)
     }
 
-    // Hub code and full station name for the "Train to airport" Trainline step
+    // Hub code and full airport name for the Rome2Rio "get to the airport" leg
     const hubCode    = fromCode?.toUpperCase() ?? ''
     const destCode   = toCode?.toUpperCase()   ?? destName.slice(0, 3).toUpperCase()
-    // Look up the exact Trainline station name; fall back to "<CODE> Airport" if unknown
+    // Look up the human-readable airport name; fall back to "<CODE> Airport" if unknown
     const hubStation = hubCode ? (HUB_STATION[hubCode] ?? `${hubCode} Airport`) : null
 
     // Arrival-side: the airport the user lands at — origin for the onward transit leg.
@@ -239,12 +216,12 @@ function buildLegs(
     // producing the "Lincoln trap" where every INTO TOWN link originates from the user's home.
     const arrivalAirport = `${cityOnly(destName)} Airport`
 
-    // Step 1: train from user's origin to the departure hub airport (never to the final destination)
+    // Step 1: Rome2Rio from user's origin to the departure hub airport.
+    // Rome2Rio shows all train/coach options to the airport without white-screening
+    // on unusual place names (unlike Trainline which required exact station codes).
     const trainToHub: Leg = hubStation
-      ? { label: `1. TRAIN TO ${hubCode}`,  url: buildTrainlineUrl(origin, hubStation, date, false) }
-      // No IATA code on this row yet — send to Trainline with London as default hub
-      // (the vast majority of UK departure airports are in or near London)
-      : { label: `1. TRAIN TO AIRPORT`,     url: buildTrainlineUrl(origin, 'London', date, false) }
+      ? { label: `1. TRAIN TO ${hubCode}`,  url: buildRome2RioUrl(origin, hubStation) }
+      : { label: `1. TRAIN TO AIRPORT`,     url: buildRome2RioUrl(origin, 'London') }
 
     if (conn === 'TRAIN → FLIGHT → TRAIN') {
       return [
@@ -274,7 +251,7 @@ function buildLegs(
   if (t.mode === 'ferry') {
     if (conn === 'TRAIN → FERRY → TRAIN') {
       return [
-        { label: '1. TRAIN TO PORT',  url: buildTrainlineUrl(origin, 'Dover', date, false) },
+        { label: '1. TRAIN TO PORT',  url: buildRome2RioUrl(origin, 'Dover') },
         { label: '2. BOOK FERRY',     url: 'https://www.directferries.co.uk/' },
         { label: '3. LOCAL TRANSIT',  url: buildGoogleMapsTransit(`${destName} Ferry Terminal`, destName, date) },
       ]
@@ -286,23 +263,23 @@ function buildLegs(
   if (t.mode === 'train') {
     if (conn === 'EUROSTAR → TRAIN') {
       return [
-        { label: '1. EUROSTAR TO PARIS', url: buildTrainlineUrl(origin, 'Paris Gare du Nord', date, false) },
+        { label: '1. EUROSTAR TO PARIS', url: buildRome2RioUrl(origin, 'Paris') },
         { label: '2. ONWARD TRAIN',      url: buildGoogleMapsTransit('Paris', destName, date) },
       ]
     }
     if (conn === 'EUROSTAR + METRO') {
       return [
-        { label: '1. EUROSTAR',      url: buildTrainlineUrl(origin, 'Paris Gare du Nord', date, false) },
+        { label: '1. EUROSTAR',      url: buildRome2RioUrl(origin, 'Paris') },
         { label: '2. LOCAL TRANSIT', url: buildGoogleMapsTransit('Paris Gare du Nord', destName, date) },
       ]
     }
-    // Direct UK/European train — Trainline covers it
-    return [{ label: `🚆 TRAIN TO ${cityOnly(destName).toUpperCase()}`, url: buildTrainlineUrl(origin, destName, date, isReturn) }]
+    // Direct UK/European train — Rome2Rio shows all train options + booking links
+    return [{ label: `🚆 TRAIN TO ${cityOnly(destName).toUpperCase()}`, url: buildRome2RioUrl(origin, destName) }]
   }
 
   // ── Coach ─────────────────────────────────────────────────────────────────
-  // Trainline covers UK & cross-channel coaches (origin → destName is correct here
-  // because the coach goes directly to the destination, no airport hub needed).
+  // Google Maps transit for coaches (origin → destName is correct here —
+  // the coach goes directly to the destination, no airport hub needed).
   if (t.mode === 'bus') {
     return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildGoogleMapsTransit(origin, destName, date) }]
   }
@@ -321,7 +298,7 @@ function buildSingleUrl(
   const isReturn = tripDirection === 'return'
 
   switch (t.mode) {
-    case 'train': return buildGoogleMapsTransit(origin, destName, date)
+    case 'train': return buildRome2RioUrl(origin, destName)
     case 'plane': {
       const fromCode = t.originSkyId
       const toCode   = t.destSkyId

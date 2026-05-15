@@ -134,12 +134,29 @@ function filterAndSort(
     // Transport + budget
     // A journey is only valid if its primary mode AND every mode it connects through
     // are all enabled.  e.g. "TRAIN → FLIGHT → TRAIN" is excluded if trains are off.
-    // Only filter on the PRIMARY transport mode the user has chosen.
-    // The requiresConnection string (e.g. 'TRAIN → FLIGHT → TRAIN') describes
-    // the practical legs needed to complete a flight/ferry journey — it is NOT
-    // a separate user-selectable transport type.  Checking it against `modes`
-    // caused all flight routes to vanish when Train was deselected, because
-    // every international flight has a train leg to the departure airport.
+    // ── Nuclear mode filter ───────────────────────────────────────────────────
+    // Each destination has exactly one "primary mode" — determined by whichever
+    // transport option is cheapest overall (before any mode filtering).  This
+    // categorises destinations unambiguously:
+    //   • UK domestic (train £30 < flight £55) → primary = train
+    //   • International long-haul (plane £110, no train) → primary = plane
+    //   • Paris / Brussels (Eurostar £48 < flight £55) → primary = train
+    //   • Ferry route (ferry £40, no other option) → primary = ferry
+    //
+    // Rule: if the user's enabledModes does NOT include the primary mode,
+    // the destination is removed entirely — regardless of any cheaper/alternative
+    // modes that also happen to exist.  This gives strict, predictable results:
+    // "Train only" → zero flight destinations; "Flight only" → zero domestic
+    // train routes.  Secondary modes (e.g. the train to the airport on a flight
+    // journey) are routing details, not filter categories.
+    if (dest.transport.length === 0) return false
+    const priceKeyPrimary = tripDirection === 'oneway' ? 'priceGBP' : 'returnPriceGBP'
+    const cheapestOverall = dest.transport.reduce((min, t) =>
+      (t[priceKeyPrimary] ?? Infinity) < (min[priceKeyPrimary] ?? Infinity) ? t : min,
+    )
+    if (!modes.includes(cheapestOverall.mode)) return false
+
+    // validTransport: only enabled-mode entries, used for budget + time checks
     const validTransport = dest.transport.filter(t => modes.includes(t.mode))
     if (validTransport.length === 0) return false
 
