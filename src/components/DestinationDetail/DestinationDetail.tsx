@@ -96,9 +96,17 @@ const HUB_STATION: Record<string, string> = {
  *
  *  URL structure: https://www.rome2rio.com/map/{origin}/{destination}
  *  Rome2Rio shows fare estimates and links to booking for every viable mode,
- *  making it the most useful single link for any "how do I get there?" question. */
+ *  making it the most useful single link for any "how do I get there?" question.
+ *
+ *  Guards: returns '' (renders as disabled/empty link) if either string is
+ *  blank — prevents /map// broken URLs when origin hasn't been set yet. */
 function buildRome2RioUrl(from: string, to: string): string {
-  return `https://www.rome2rio.com/map/${encodeURIComponent(cityOnly(from))}/${encodeURIComponent(to)}`
+  const f = (from  ?? '').trim()
+  const t = (to    ?? '').trim()
+  if (!f || !t) return ''
+  // Apply cityOnly to the origin so "Lincoln, Lincolnshire, UK" → "Lincoln"
+  // and trim the destination — both are then percent-encoded.
+  return `https://www.rome2rio.com/map/${encodeURIComponent(cityOnly(f))}/${encodeURIComponent(t.trim())}`
 }
 
 /** Google Maps transit deep-link — reliable fallback for any surface leg where
@@ -177,8 +185,14 @@ function buildLegs(
   date: Date | null,
   tripDirection: 'return' | 'oneway',
 ): Leg[] {
-  const dEnc    = encodeURIComponent(destName)
-  const conn    = t.requiresConnection
+  // Pin the user's origin to the live store value — prevents stale-prop issues
+  // and ensures the correct city is used even when the component re-renders before
+  // the parent passes an updated origin prop.  Fall back to the param if the store
+  // hasn't been initialised yet (SSR / test contexts).
+  const storeOrigin   = useSearchStore.getState().origin
+  const effectiveFrom = (storeOrigin?.trim() || origin?.trim() || '').split(',')[0].trim()
+
+  const conn     = t.requiresConnection
   const isReturn = tripDirection === 'return'
 
   // ── Flights ──────────────────────────────────────────────────────────────
@@ -203,32 +217,36 @@ function buildLegs(
       flightUrl = buildGoogleFlightsUrl('LON', destName, outwardISO, isReturn)
     }
 
-    // Hub code and full airport name for the Rome2Rio "get to the airport" leg
+    // Hub code and human-readable airport name for the Rome2Rio "get to departure airport" leg.
     const hubCode    = fromCode?.toUpperCase() ?? ''
     const destCode   = toCode?.toUpperCase()   ?? destName.slice(0, 3).toUpperCase()
-    // Look up the human-readable airport name; fall back to "<CODE> Airport" if unknown
-    const hubStation = hubCode ? (HUB_STATION[hubCode] ?? `${hubCode} Airport`) : null
+    // Look up the full airport name; fall back to "<CODE> Airport" when unknown.
+    // If there is no IATA code at all (static row), use "London Airport" — the
+    // vast majority of UK departures route through a London airport.
+    const hubStation = hubCode
+      ? (HUB_STATION[hubCode] ?? `${hubCode} Airport`)
+      : 'London Airport'
 
-    // Arrival-side: the airport the user lands at — origin for the onward transit leg.
-    // Always use the human-readable city name (e.g. "Barcelona Airport") rather than the
-    // raw IATA code (e.g. "BCN Airport") because Google Maps reliably geocodes plain city
-    // names but may silently fall back to the user's current device location for IATA codes,
-    // producing the "Lincoln trap" where every INTO TOWN link originates from the user's home.
+    // Arrival-side: "Barcelona Airport" — city name always, never raw IATA code,
+    // so Rome2Rio can resolve it without falling back to the user's device location.
     const arrivalAirport = `${cityOnly(destName)} Airport`
 
-    // Step 1: Rome2Rio from user's origin to the departure hub airport.
-    // Rome2Rio shows all train/coach options to the airport without white-screening
-    // on unusual place names (unlike Trainline which required exact station codes).
-    const trainToHub: Leg = hubStation
-      ? { label: `1. TRAIN TO ${hubCode}`,  url: buildRome2RioUrl(origin, hubStation) }
-      : { label: `1. TRAIN TO AIRPORT`,     url: buildRome2RioUrl(origin, 'London') }
+    // Leg 1: Rome2Rio from the user's home city to their departure airport.
+    //        effectiveFrom is read fresh from the store (see top of function).
+    const trainToHub: Leg = {
+      label: hubCode ? `1. TRAIN TO ${hubCode}` : '1. TRAIN TO AIRPORT',
+      url:   buildRome2RioUrl(effectiveFrom, hubStation),
+    }
 
     if (conn === 'TRAIN → FLIGHT → TRAIN') {
       return [
         trainToHub,
         { label: `2. FLIGHT TO ${destCode}`, url: flightUrl },
-        // Leg 3: from the arrival airport into the city centre
-        { label: `3. INTO TOWN`,             url: buildGoogleMapsTransit(arrivalAirport, destName, date) },
+        // Leg 3: Rome2Rio from arrival airport to city centre.
+        // origin  = "{City} Airport"  (e.g. "Barcelona Airport")
+        // destination = "{City}"       (e.g. "Barcelona")
+        // Rome2Rio surfaces train/metro/bus options from the terminal into town.
+        { label: `3. INTO TOWN`, url: buildRome2RioUrl(arrivalAirport, cityOnly(destName)) },
       ]
     }
     if (conn === 'TRAIN → FLIGHT') {
@@ -251,7 +269,7 @@ function buildLegs(
   if (t.mode === 'ferry') {
     if (conn === 'TRAIN → FERRY → TRAIN') {
       return [
-        { label: '1. TRAIN TO PORT',  url: buildRome2RioUrl(origin, 'Dover') },
+        { label: '1. TRAIN TO PORT',  url: buildRome2RioUrl(effectiveFrom, 'Dover') },
         { label: '2. BOOK FERRY',     url: 'https://www.directferries.co.uk/' },
         { label: '3. LOCAL TRANSIT',  url: buildGoogleMapsTransit(`${destName} Ferry Terminal`, destName, date) },
       ]
@@ -263,29 +281,29 @@ function buildLegs(
   if (t.mode === 'train') {
     if (conn === 'EUROSTAR → TRAIN') {
       return [
-        { label: '1. EUROSTAR TO PARIS', url: buildRome2RioUrl(origin, 'Paris') },
+        { label: '1. EUROSTAR TO PARIS', url: buildRome2RioUrl(effectiveFrom, 'Paris') },
         { label: '2. ONWARD TRAIN',      url: buildGoogleMapsTransit('Paris', destName, date) },
       ]
     }
     if (conn === 'EUROSTAR + METRO') {
       return [
-        { label: '1. EUROSTAR',      url: buildRome2RioUrl(origin, 'Paris') },
+        { label: '1. EUROSTAR',      url: buildRome2RioUrl(effectiveFrom, 'Paris') },
         { label: '2. LOCAL TRANSIT', url: buildGoogleMapsTransit('Paris Gare du Nord', destName, date) },
       ]
     }
     // Direct UK/European train — Rome2Rio shows all train options + booking links
-    return [{ label: `🚆 TRAIN TO ${cityOnly(destName).toUpperCase()}`, url: buildRome2RioUrl(origin, destName) }]
+    return [{ label: `🚆 TRAIN TO ${cityOnly(destName).toUpperCase()}`, url: buildRome2RioUrl(effectiveFrom, destName) }]
   }
 
   // ── Coach ─────────────────────────────────────────────────────────────────
   // Google Maps transit for coaches (origin → destName is correct here —
   // the coach goes directly to the destination, no airport hub needed).
   if (t.mode === 'bus') {
-    return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildGoogleMapsTransit(origin, destName, date) }]
+    return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildGoogleMapsTransit(effectiveFrom, destName, date) }]
   }
 
-  // Fallback — Google Maps transit rather than a broken Omio path
-  return [{ label: `BOOK ${(t.mode as string).toUpperCase()}`, url: buildGoogleMapsTransit(origin, destName, date) }]
+  // Fallback — Google Maps transit
+  return [{ label: `BOOK ${(t.mode as string).toUpperCase()}`, url: buildGoogleMapsTransit(effectiveFrom, destName, date) }]
 }
 
 function buildSingleUrl(
