@@ -26,14 +26,14 @@ function fmtMins(mins: number): string {
 }
 
 function flightEstimate(distanceKm: number): { mins: number; price: number } {
-  if (distanceKm < 600)   return { mins: 85,  price: 55 }
-  if (distanceKm < 1200)  return { mins: 120, price: 80 }
-  if (distanceKm < 2000)  return { mins: 165, price: 110 }
-  if (distanceKm < 3500)  return { mins: 240, price: 180 }
-  if (distanceKm < 6000)  return { mins: 390, price: 320 }
-  if (distanceKm < 9000)  return { mins: 570, price: 500 }
-  if (distanceKm < 12000) return { mins: 720, price: 680 }
-  return                         { mins: 960, price: 850 }
+  if (distanceKm < 600)   return { mins: 85,  price: 45 }   // e.g. London–Edinburgh ~£30–60
+  if (distanceKm < 1200)  return { mins: 120, price: 65 }   // e.g. London–Barcelona ~£50–90
+  if (distanceKm < 2000)  return { mins: 165, price: 95 }   // e.g. London–Athens ~£70–130
+  if (distanceKm < 3500)  return { mins: 240, price: 160 }  // e.g. London–Dubai ~£120–220
+  if (distanceKm < 6000)  return { mins: 390, price: 300 }  // e.g. London–New York ~£250–400
+  if (distanceKm < 9000)  return { mins: 570, price: 480 }
+  if (distanceKm < 12000) return { mins: 720, price: 620 }
+  return                         { mins: 960, price: 800 }
 }
 
 /** Convert a city name to a URL-friendly slug, e.g. "Kingston upon Hull" → "kingston-upon-hull" */
@@ -66,13 +66,13 @@ export function estimateTransport(
   // ── Local coach / bus (< 120km) ─────────────────────────────────────────
   if (distanceKm < 120) {
     const mins = Math.max(15, Math.round(distanceKm * 2.2))
-    const price = Math.max(2, Math.round(distanceKm * 0.2))
+    const price = Math.max(5, Math.round(distanceKm * 0.06))
     transports.push({
       mode: 'bus',
       operator: 'National Express / Megabus',
       travelTime: fmtMins(mins),
       priceGBP: price,
-      returnPriceGBP: Math.round(price * 1.8),
+      returnPriceGBP: Math.round(price * 1.5),
       bookingUrl: `https://www.google.com/search?q=coach+from+${oEnc}+to+${dEnc}+tickets`,
       // Short bus hops are direct point-to-point
     })
@@ -95,7 +95,7 @@ export function estimateTransport(
       operator: isEurostar ? 'Eurostar / Rail Europe' : isNearRail ? 'Rail Europe / DB' : 'National Rail',
       travelTime: fmtMins(trainMins),
       priceGBP: trainPrice,
-      returnPriceGBP: Math.round(trainPrice * 1.9),
+      returnPriceGBP: Math.round(trainPrice * 1.7),
       bookingUrl: `https://www.rome2rio.com/map/${encodeURIComponent(originName)}/${encodeURIComponent(destName)}`,
       requiresConnection: trainConnection,
     })
@@ -134,7 +134,7 @@ export function estimateTransport(
       operator: 'Various airlines',
       travelTime: fmtMins(mins),
       priceGBP: price,
-      returnPriceGBP: Math.round(price * 1.9),
+      returnPriceGBP: Math.round(price * 1.8),
       // Google Flights accepts any city name pair — reliable fallback since we don't store IATA codes
       bookingUrl: `https://www.google.com/travel/flights?q=Flights+from+${oEnc}+to+${dEnc}`,
       requiresConnection: flightConnection,

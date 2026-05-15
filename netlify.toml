@@ -7,11 +7,12 @@
   framework  = "vite"
   targetPort = 3000     # must match vite.config.ts server.port
 
-# Forward /api/* to the matching serverless function.
-# Must come BEFORE the SPA catch-all redirect.
+# Forward only the live-routes endpoint to its Netlify Function.
+# Other /api/* routes (admin-data, git-status, deploy, etc.) are handled
+# by the Vite dev server middleware and must NOT be caught here.
 [[redirects]]
-  from   = "/api/*"
-  to     = "/.netlify/functions/:splat"
+  from   = "/api/get-routes"
+  to     = "/.netlify/functions/get-routes"
   status = 200
 
 # SPA fallback — everything else serves index.html

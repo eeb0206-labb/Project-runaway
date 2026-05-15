@@ -85,7 +85,9 @@ function adminApiPlugin() {
           try {
             const { message } = await readBody(req).catch(() => ({ message: '' }))
             const msg = message?.trim() || `update: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
-            execSync(`git add -A && git commit -m "${msg}" && git push`, { encoding: 'utf-8' })
+            execSync('git add -A', { encoding: 'utf-8' })
+            try { execSync(`git commit -m "${msg}"`, { encoding: 'utf-8' }) } catch { /* nothing to commit — skip */ }
+            execSync('git push', { encoding: 'utf-8' })
             return jsonRes(res, { ok: true, message: msg })
           } catch (e: any) { return jsonRes(res, { error: e.message }, 500) }
         }
