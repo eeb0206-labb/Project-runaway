@@ -724,7 +724,7 @@ function buildEmailText(
   return lines.join('\n')
 }
 
-export function DestinationDetail() {
+export function DestinationDetail({ inline = false }: { inline?: boolean }) {
   const { selectedDestination, setSelected, origin, tripDirection, departDate, needsAccommodation, modes } = useSearchStore()
   const date = computeDepartDate(departDate)
   console.log('[DestinationDetail] tripDirection:', tripDirection)
@@ -783,7 +783,7 @@ export function DestinationDetail() {
   }
 
   return (
-    <div className={styles.panel}>
+    <div className={`${styles.panel} ${inline ? styles.panelInline : ''}`}>
       <div className={styles.header}>
         <div className={styles.headerTopRow}>
           <button className={styles.closeBtn} onClick={() => setSelected(null)}>← BACK TO BOARD</button>
@@ -805,7 +805,7 @@ export function DestinationDetail() {
         <div className={styles.vibe}>{dest.vibe}</div>
       </div>
 
-      <div className={styles.body}>
+      <div className={`${styles.body} ${inline ? styles.bodyInline : ''}`}>
         {/* Tags */}
         {dest.tags.length > 0 && (
           <div className={styles.section}>

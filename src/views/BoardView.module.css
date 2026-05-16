@@ -12,3 +12,10 @@
   overflow: hidden;
   min-width: 0;
 }
+
+/* On mobile: hide the side panel — detail renders inline in the list instead */
+@media (max-width: 768px) {
+  .sideDetail {
+    display: none;
+  }
+}

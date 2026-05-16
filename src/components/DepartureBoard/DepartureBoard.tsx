@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchStore } from '../../store/useSearchStore'
 import { SplitFlap } from '../SplitFlap/SplitFlap'
 import { SurpriseMe } from '../SurpriseMe/SurpriseMe'
+import { DestinationDetail } from '../DestinationDetail/DestinationDetail'
 import type { Destination } from '../../types'
 import styles from './DepartureBoard.module.css'
 
@@ -218,14 +219,21 @@ export function DepartureBoard() {
       >
         <AnimatePresence>
           {results.map((dest, i) => (
-            <BoardRow
-              key={dest.id}
-              dest={dest}
-              index={i}
-              selected={selectedDestination?.id === dest.id}
-              onClick={() => setSelected(selectedDestination?.id === dest.id ? null : dest)}
-              direction={tripDirection}
-            />
+            <div key={dest.id}>
+              <BoardRow
+                dest={dest}
+                index={i}
+                selected={selectedDestination?.id === dest.id}
+                onClick={() => setSelected(selectedDestination?.id === dest.id ? null : dest)}
+                direction={tripDirection}
+              />
+              {/* Inline accordion detail — mobile only (hidden on desktop via CSS) */}
+              {selectedDestination?.id === dest.id && (
+                <div className={styles.inlineDetail}>
+                  <DestinationDetail inline />
+                </div>
+              )}
+            </div>
           ))}
         </AnimatePresence>
       </div>

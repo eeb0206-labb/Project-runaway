@@ -11,6 +11,22 @@
   flex-shrink: 0;
 }
 
+/* Inline / accordion mode — used inside the mobile board list */
+.panelInline {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  border-left: none;
+  border-top: 2px solid var(--am);
+  overflow: visible;
+  flex-shrink: 1;
+}
+
+.bodyInline {
+  flex: none;
+  overflow-y: visible;
+}
+
 .header {
   padding: 16px 16px 12px;
   border-bottom: 1px solid var(--sep);

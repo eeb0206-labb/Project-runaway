@@ -323,3 +323,15 @@
   0%, 100% { opacity: 0.3; }
   50%       { opacity: 0.7; }
 }
+
+/* Inline accordion detail panel — mobile only */
+.inlineDetail {
+  display: none; /* hidden on desktop — side panel is used instead */
+}
+
+@media (max-width: 768px) {
+  .inlineDetail {
+    display: block;
+    border-bottom: 1px solid var(--sep);
+  }
+}

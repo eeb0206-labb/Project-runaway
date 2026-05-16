@@ -11,8 +11,11 @@ export function BoardView() {
       <div className={styles.board}>
         <DepartureBoard />
       </div>
+      {/* Side panel — desktop only. On mobile, detail renders inline in the board list */}
       {selectedDestination && (
-        <DestinationDetail />
+        <div className={styles.sideDetail}>
+          <DestinationDetail />
+        </div>
       )}
     </div>
   )
