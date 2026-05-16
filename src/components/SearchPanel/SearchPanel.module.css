@@ -3,8 +3,26 @@
   border-bottom: 1px solid var(--sep);
   flex-shrink: 0;
   font-family: var(--font-mono);
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 20;
+}
+
+/* On mobile, when scrolled, drop the solid bg so the glass pill shows cleanly */
+.wrapScrolled {
+  background: transparent;
+  border-bottom: none;
+}
+
+/* ── Mini-bar (mobile only, shown when board is scrolled) ────────────────────── */
+
+.miniBar {
+  display: none; /* desktop: never shown */
+}
+
+/* panelOuter collapses on mobile when scrolled */
+.panelOuterHidden {
+  display: none;
 }
 
 /* ── Main row ──────────────────────────────────────────────────────────────── */
@@ -248,7 +266,166 @@
 .searchBtn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+
+  /* ── Mini-bar ────────────────────────────────────────────────────────────────── */
+
+  .miniBar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--sep);
+    font-family: var(--font-mono);
+    overflow: hidden;
+    /* hidden until scrolled */
+    opacity: 0;
+    pointer-events: none;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transition: opacity 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
+  }
+
+  .miniBarVisible {
+    opacity: 1;
+    pointer-events: auto;
+    max-height: 48px;
+    padding: 6px 10px;
+  }
+
+  /* Map / Board nav links */
+  .miniNavLink {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--amd);
+    text-decoration: none;
+    padding: 4px 8px;
+    border: 1px solid var(--sep);
+    background: var(--bd);
+    flex-shrink: 0;
+    transition: all 0.12s;
+  }
+
+  .miniNavLink:first-of-type {
+    border-right: none;
+  }
+
+  .miniNavLinkActive {
+    color: var(--am);
+    border-color: var(--am);
+    background: rgba(217,119,6,0.1);
+    font-weight: 600;
+  }
+
+  /* Location button — tapping scrolls list back to top */
+  .miniOrigin {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--am);
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .miniOrigin:active { opacity: 0.7; }
+
+  /* Thin divider between sections */
+  .miniSep {
+    width: 1px;
+    height: 20px;
+    background: var(--sep);
+    flex-shrink: 0;
+    margin: 0 6px;
+  }
+
+  /* Budget group */
+  .miniGroup {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .miniLabel {
+    font-size: 12px;
+    color: var(--amb);
+    font-weight: 600;
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .miniSlider {
+    -webkit-appearance: none;
+    width: 70px;
+    height: 2px;
+    background: var(--sep);
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .miniSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--am);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .miniSlider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--am);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Sort — dropdown */
+  .miniSortWrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .miniSortLabel {
+    font-size: 9px;
+    color: var(--amd);
+    letter-spacing: 0.15em;
+    flex-shrink: 0;
+  }
+
+  .miniSortSelect {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    color: var(--am);
+    background: var(--bd);
+    border: 1px solid var(--am);
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23d97706'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    padding-right: 20px;
+  }
+
+  /* ── Expanded panel layout ────────────────────────────────────────────────── */
+
   .panel {
     padding: 10px 12px;
     gap: 8px;
@@ -293,10 +470,24 @@
     font-size: 14px;
   }
 
-  /* Chips: allow wrapping, touch-friendly */
+  /* Chips: single horizontal scrolling row — no wrapping */
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch-friendly chip size */
   .chip {
     font-size: 11px;
     padding: 5px 10px;
+    flex-shrink: 0;
   }
 
   /* Right group: filters + search stacked */
@@ -333,6 +524,13 @@
     font-size: 13px;
     padding: 10px 12px;
   }
+}
+
+/* ── Desktop: mini-bar never appears, full panel always shown ───────────────── */
+@media (min-width: 769px) {
+  .miniBar          { display: none !important; }
+  .panelOuterHidden { display: block !important; }
+  .wrapScrolled     { background: var(--bg2) !important; border-bottom: 1px solid var(--sep) !important; }
 }
 
 /* ── Departure date label ───────────────────────────────────────────────────── */

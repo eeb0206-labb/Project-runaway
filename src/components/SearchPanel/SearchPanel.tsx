@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { NavLink } from 'react-router-dom'
 import { useSearchStore } from '../../store/useSearchStore'
 import type { TransportMode, TripType, Discount, SizeFilter, SortBy } from '../../types'
 import type { TravelScope } from '../../store/useSearchStore'
@@ -126,9 +127,14 @@ export function SearchPanel() {
     content, clearFilters,
     availableCountries,
     needsAccommodation, toggleNeedsAccommodation,
+    boardScrollDir,
+    settings,
   } = useSearchStore()
 
   const [filtersOpen, setFiltersOpen] = useState(false)
+  // Hide full panel on scroll down; show mini-bar on scroll up
+  const panelHidden = boardScrollDir !== 'none'
+  const miniBarVisible = boardScrollDir === 'up'
   const [suggestions, setSuggestions] = useState<{ name: string; lat: number; lng: number }[]>([])
   const [geoLoading, setGeoLoading] = useState(false)
   const [originInput, setOriginInput] = useState(origin)
@@ -183,6 +189,9 @@ export function SearchPanel() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Mini-bar values
+  const pillOrigin = origin.split(',')[0].trim() || 'LOCATION'
+
   function pickSuggestion(s: { name: string; lat: number; lng: number }) {
     setOriginInput(s.name)
     setOrigin(s.name, s.lat, s.lng)
@@ -218,7 +227,75 @@ export function SearchPanel() {
   const countries = availableCountries()
 
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} ${panelHidden ? styles.wrapScrolled : ''}`}>
+
+      {/* ── Compact mini-bar (mobile only, visible when scrolled) ──────────── */}
+      {/* Shows location + budget + sort so user can adjust without scrolling back up */}
+      <div className={`${styles.miniBar} ${miniBarVisible ? styles.miniBarVisible : ''}`}>
+
+        {/* Map / Board toggle */}
+        {settings.features.showMapLink && (
+          <>
+            <NavLink
+              to="/board"
+              className={({ isActive }) => `${styles.miniNavLink} ${isActive ? styles.miniNavLinkActive : ''}`}
+            >
+              LIST
+            </NavLink>
+            <NavLink
+              to="/map"
+              className={({ isActive }) => `${styles.miniNavLink} ${isActive ? styles.miniNavLinkActive : ''}`}
+            >
+              MAP
+            </NavLink>
+            <span className={styles.miniSep} />
+          </>
+        )}
+
+        {/* Location chip — tap to scroll back up and reveal full panel */}
+        <button
+          className={styles.miniOrigin}
+          onClick={() => window.dispatchEvent(new CustomEvent('board-scroll-top'))}
+          title="Tap to edit full search"
+        >
+          📍 {pillOrigin}
+        </button>
+
+        <span className={styles.miniSep} />
+
+        {/* Budget — live slider */}
+        <div className={styles.miniGroup}>
+          <span className={styles.miniLabel}>£{budget}</span>
+          <input
+            type="range"
+            className={styles.miniSlider}
+            min={10} max={500} step={5}
+            value={budget}
+            onChange={e => { const v = Number(e.target.value); setBudget(v); setBudgetInput(String(v)) }}
+          />
+        </div>
+
+        <span className={styles.miniSep} />
+
+        {/* Sort — dropdown */}
+        <div className={styles.miniSortWrap}>
+          <span className={styles.miniSortLabel}>SORT</span>
+          <select
+            className={styles.miniSortSelect}
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as SortBy)}
+          >
+            {SORT_OPTS.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+      </div>
+
+      {/* ── Expanded panel (hidden on mobile when scrolled) ──────────────── */}
+      <div className={panelHidden ? styles.panelOuterHidden : ''}>
+
       {/* ── Main row ─────────────────────────────────────────────────────── */}
       <div className={styles.panel}>
 
@@ -458,7 +535,7 @@ export function SearchPanel() {
       </div>
 
       {/* ── Filter drawer ────────────────────────────────────────────────── */}
-      {filtersOpen && (
+      {filtersOpen && !panelHidden && (
         <div className={styles.drawer}>
 
           {/* Trip type */}
@@ -595,6 +672,8 @@ export function SearchPanel() {
           </div>
         </div>
       )}
+
+      </div>{/* end panelOuter */}
     </div>
   )
 }

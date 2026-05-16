@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchStore } from '../../store/useSearchStore'
 import { SplitFlap } from '../SplitFlap/SplitFlap'
@@ -116,7 +117,28 @@ function SkeletonRow({ index }: { index: number }) {
 }
 
 export function DepartureBoard() {
-  const { results, selectedDestination, setSelected, isLoading, hasSearched, content, settings, sortBy, tripDirection } = useSearchStore()
+  const { results, selectedDestination, setSelected, isLoading, hasSearched, content, settings, sortBy, tripDirection, setBoardScrollDir } = useSearchStore()
+  const listRef    = useRef<HTMLDivElement>(null)
+  const prevScroll = useRef(0)
+
+  // Listen for 'board-scroll-top' event dispatched by the mini-bar location button
+  useEffect(() => {
+    const handler = () => listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    window.addEventListener('board-scroll-top', handler)
+    return () => window.removeEventListener('board-scroll-top', handler)
+  }, [])
+
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    const top = e.currentTarget.scrollTop
+    if (top <= 0) {
+      setBoardScrollDir('none')          // at the very top — full panel
+    } else if (top > prevScroll.current) {
+      setBoardScrollDir('down')          // scrolling down — hide everything
+    } else {
+      setBoardScrollDir('up')            // scrolling up — show mini-bar
+    }
+    prevScroll.current = top
+  }
 
   // Column header labels — editable via Admin → Content → Board Column Headers
   const col = content.boardColumns ?? {}
@@ -189,7 +211,11 @@ export function DepartureBoard() {
         <span className={styles.headerCell}>{hPrice}</span>
       </div>
 
-      <div className={styles.list}>
+      <div
+        ref={listRef}
+        className={styles.list}
+        onScroll={handleScroll}
+      >
         <AnimatePresence>
           {results.map((dest, i) => (
             <BoardRow

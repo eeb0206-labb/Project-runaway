@@ -51,6 +51,7 @@ interface StoreState {
   isLoading: boolean
   adminOpen: boolean
   needsAccommodation: boolean
+  boardScrollDir: 'none' | 'down' | 'up'
 
   // actions
   setOrigin: (name: string, lat?: number, lng?: number) => void
@@ -73,6 +74,7 @@ interface StoreState {
   setDepartDate: (d: string) => void
 
   toggleNeedsAccommodation: () => void
+  setBoardScrollDir: (v: 'none' | 'down' | 'up') => void
   runSearch: () => void
   surpriseMe: () => void
   clearFilters: () => void
@@ -468,6 +470,7 @@ export const useSearchStore = create<StoreState>((set, get) => ({
   isLoading: false,
   adminOpen: false,
   needsAccommodation: false,
+  boardScrollDir: 'none',
 
   setOrigin: (name, lat, lng) => {
     const newLat = lat ?? null
@@ -507,6 +510,7 @@ export const useSearchStore = create<StoreState>((set, get) => ({
   setPassengers: v => { set({ passengers: v }); reapply(get, set) },
   setSelected: d => set({ selectedDestination: d }),
   toggleNeedsAccommodation: () => set(s => ({ needsAccommodation: !s.needsAccommodation })),
+  setBoardScrollDir: (v) => set({ boardScrollDir: v }),
 
   setSizeFilter: s => { set({ sizeFilter: s }); reapply(get, set) },
 
