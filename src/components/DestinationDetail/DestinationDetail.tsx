@@ -101,12 +101,16 @@ const HUB_STATION: Record<string, string> = {
  *  Guards: returns '' (renders as disabled/empty link) if either string is
  *  blank — prevents /map// broken URLs when origin hasn't been set yet. */
 function buildRome2RioUrl(from: string, to: string): string {
-  const f = (from  ?? '').trim()
-  const t = (to    ?? '').trim()
+  const f = (from ?? '').trim()
+  const t = (to   ?? '').trim()
   if (!f || !t) return ''
-  // Apply cityOnly to the origin so "Lincoln, Lincolnshire, UK" → "Lincoln"
-  // and trim the destination — both are then percent-encoded.
-  return `https://www.rome2rio.com/map/${encodeURIComponent(cityOnly(f))}/${encodeURIComponent(t.trim())}`
+  // Coordinate strings like "53.2307,-0.5406" must NOT be encoded — Rome2Rio reads
+  // them as lat/lng and they're completely unambiguous (no "Lincoln, Nebraska" confusion).
+  // Plain city names get cityOnly() + percent-encoding as before.
+  const isCoords = (s: string) => /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(s)
+  const fPart = isCoords(f) ? f : encodeURIComponent(cityOnly(f))
+  const tPart = isCoords(t) ? t : encodeURIComponent(t.trim())
+  return `https://www.rome2rio.com/map/${fPart}/${tPart}`
 }
 
 /** Google Maps transit deep-link — reliable fallback for any surface leg where
@@ -184,13 +188,23 @@ function buildLegs(
   destName: string,
   date: Date | null,
   tripDirection: 'return' | 'oneway',
+  destLat?: number,
+  destLng?: number,
 ): Leg[] {
-  // Pin the user's origin to the live store value — prevents stale-prop issues
-  // and ensures the correct city is used even when the component re-renders before
-  // the parent passes an updated origin prop.  Fall back to the param if the store
-  // hasn't been initialised yet (SSR / test contexts).
-  const storeOrigin   = useSearchStore.getState().origin
+  // Pin the user's origin to the live store value — prevents stale-prop issues.
+  const storeState  = useSearchStore.getState()
+  const storeOrigin = storeState.origin
+  // Display name (labels, leg headings) — just the city, no country suffix
   const effectiveFrom = (storeOrigin?.trim() || origin?.trim() || '').split(',')[0].trim()
+  // URL strings: use geocoded coordinates when available — completely unambiguous.
+  // "Lincoln" alone is ambiguous (UK vs Nebraska); "53.2307,-0.5406" is not.
+  const { originLat, originLng } = storeState
+  const fromForUrl = (originLat != null && originLng != null)
+    ? `${originLat.toFixed(4)},${originLng.toFixed(4)}`
+    : effectiveFrom
+  const toForUrl = (destLat != null && destLng != null)
+    ? `${destLat.toFixed(4)},${destLng.toFixed(4)}`
+    : destName
 
   const conn     = t.requiresConnection
   const isReturn = tripDirection === 'return'
@@ -235,18 +249,14 @@ function buildLegs(
     //        effectiveFrom is read fresh from the store (see top of function).
     const trainToHub: Leg = {
       label: hubCode ? `1. TRAIN TO ${hubCode}` : '1. TRAIN TO AIRPORT',
-      url:   buildRome2RioUrl(effectiveFrom, hubStation),
+      url:   buildRome2RioUrl(fromForUrl, hubStation),
     }
 
     if (conn === 'TRAIN → FLIGHT → TRAIN') {
       return [
         trainToHub,
         { label: `2. FLIGHT TO ${destCode}`, url: flightUrl },
-        // Leg 3: Rome2Rio from arrival airport to city centre.
-        // origin  = "{City} Airport"  (e.g. "Barcelona Airport")
-        // destination = "{City}"       (e.g. "Barcelona")
-        // Rome2Rio surfaces train/metro/bus options from the terminal into town.
-        { label: `3. INTO TOWN`, url: buildRome2RioUrl(arrivalAirport, cityOnly(destName)) },
+        { label: `3. INTO TOWN`, url: buildRome2RioUrl(arrivalAirport, toForUrl) },
       ]
     }
     if (conn === 'TRAIN → FLIGHT') {
@@ -261,7 +271,6 @@ function buildLegs(
         { label: `2. CONNECTING FLIGHTS → ${destCode}`, url: flightUrl },
       ]
     }
-    // Direct flight — no train leg needed, single prominent button
     return [{ label: `✈ FLIGHT TO ${destCode}`, url: flightUrl }]
   }
 
@@ -269,7 +278,7 @@ function buildLegs(
   if (t.mode === 'ferry') {
     if (conn === 'TRAIN → FERRY → TRAIN') {
       return [
-        { label: '1. TRAIN TO PORT',  url: buildRome2RioUrl(effectiveFrom, 'Dover') },
+        { label: '1. TRAIN TO PORT',  url: buildRome2RioUrl(fromForUrl, '51.1279,1.3134') }, // Dover Port, UK
         { label: '2. BOOK FERRY',     url: 'https://www.directferries.co.uk/' },
         { label: '3. LOCAL TRANSIT',  url: buildGoogleMapsTransit(`${destName} Ferry Terminal`, destName, date) },
       ]
@@ -281,29 +290,26 @@ function buildLegs(
   if (t.mode === 'train') {
     if (conn === 'EUROSTAR → TRAIN') {
       return [
-        { label: '1. EUROSTAR TO PARIS', url: buildRome2RioUrl(effectiveFrom, 'Paris') },
+        { label: '1. EUROSTAR TO PARIS', url: buildRome2RioUrl(fromForUrl, 'Paris') },
         { label: '2. ONWARD TRAIN',      url: buildGoogleMapsTransit('Paris', destName, date) },
       ]
     }
     if (conn === 'EUROSTAR + METRO') {
       return [
-        { label: '1. EUROSTAR',      url: buildRome2RioUrl(effectiveFrom, 'Paris') },
+        { label: '1. EUROSTAR',      url: buildRome2RioUrl(fromForUrl, 'Paris') },
         { label: '2. LOCAL TRANSIT', url: buildGoogleMapsTransit('Paris Gare du Nord', destName, date) },
       ]
     }
-    // Direct UK/European train — Rome2Rio shows all train options + booking links
-    return [{ label: `🚆 TRAIN TO ${cityOnly(destName).toUpperCase()}`, url: buildRome2RioUrl(effectiveFrom, destName) }]
+    return [{ label: `🚆 TRAIN TO ${cityOnly(destName).toUpperCase()}`, url: buildRome2RioUrl(fromForUrl, toForUrl) }]
   }
 
   // ── Coach ─────────────────────────────────────────────────────────────────
-  // Google Maps transit for coaches (origin → destName is correct here —
-  // the coach goes directly to the destination, no airport hub needed).
   if (t.mode === 'bus') {
-    return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildGoogleMapsTransit(effectiveFrom, destName, date) }]
+    return [{ label: `🚌 COACH TO ${cityOnly(destName).toUpperCase()}`, url: buildGoogleMapsTransit(fromForUrl, toForUrl, date) }]
   }
 
-  // Fallback — Google Maps transit
-  return [{ label: `BOOK ${(t.mode as string).toUpperCase()}`, url: buildGoogleMapsTransit(effectiveFrom, destName, date) }]
+  // Fallback
+  return [{ label: `BOOK ${(t.mode as string).toUpperCase()}`, url: buildGoogleMapsTransit(fromForUrl, toForUrl, date) }]
 }
 
 function buildSingleUrl(
@@ -312,11 +318,21 @@ function buildSingleUrl(
   destName: string,
   date: Date | null,
   tripDirection: 'return' | 'oneway',
+  destLat?: number,
+  destLng?: number,
 ): string {
   const isReturn = tripDirection === 'return'
+  // Use coordinates for both ends — prevents same-name city ambiguity on origin AND destination
+  const { originLat, originLng } = useSearchStore.getState()
+  const fromForUrl = (originLat != null && originLng != null)
+    ? `${originLat.toFixed(4)},${originLng.toFixed(4)}`
+    : origin.split(',')[0].trim()
+  const toForUrl = (destLat != null && destLng != null)
+    ? `${destLat.toFixed(4)},${destLng.toFixed(4)}`
+    : destName
 
   switch (t.mode) {
-    case 'train': return buildRome2RioUrl(origin, destName)
+    case 'train': return buildRome2RioUrl(fromForUrl, toForUrl)
     case 'plane': {
       const fromCode = t.originSkyId
       const toCode   = t.destSkyId
@@ -333,9 +349,9 @@ function buildSingleUrl(
       console.log('Generated Links:', { skyscanner, google })
       return skyscanner
     }
-    case 'bus':   return buildGoogleMapsTransit(origin, destName, date)
-    case 'ferry': return buildGoogleMapsTransit(origin, destName, date)
-    default:      return t.bookingUrl || buildGoogleMapsTransit(origin, destName, date)
+    case 'bus':   return buildGoogleMapsTransit(fromForUrl, toForUrl, date)
+    case 'ferry': return buildGoogleMapsTransit(fromForUrl, toForUrl, date)
+    default:      return t.bookingUrl || buildGoogleMapsTransit(fromForUrl, toForUrl, date)
   }
 }
 
@@ -353,18 +369,20 @@ function modeClass(mode: string) {
   return styles.modeFerry
 }
 
-function TransportCard({ t, direction, origin, destName, date, onExpand }: {
+function TransportCard({ t, direction, origin, destName, destLat, destLng, date, onExpand }: {
   t: Transport
   direction: 'return' | 'oneway'
   origin: string
   destName: string
+  destLat?: number
+  destLng?: number
   date: Date | null
   onExpand: () => void
 }) {
   const price = (direction === 'oneway' ? t.priceGBP : t.returnPriceGBP) ?? 0
   const priceLabel = direction === 'oneway' ? 'one way' : 'approx return'
-  const legs = buildLegs(t, origin, destName, date, direction)
-  const singleUrl = buildSingleUrl(t, origin, destName, date, direction)
+  const legs = buildLegs(t, origin, destName, date, direction, destLat, destLng)
+  const singleUrl = buildSingleUrl(t, origin, destName, date, direction, destLat, destLng)
 
   return (
     <div className={styles.transportCard} onClick={onExpand} style={{ cursor: 'pointer' }}>
@@ -456,7 +474,7 @@ function buildRouteEmailText(
   lines.push('──────────────────────────────')
   lines.push('BOOKING LINKS')
   lines.push('──────────────────────────────')
-  const legs = buildLegs(t, origin, dest.name, date, tripDirection)
+  const legs = buildLegs(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng)
   if (legs.length > 1) {
     legs.forEach(leg => {
       lines.push(leg.label)
@@ -464,7 +482,7 @@ function buildRouteEmailText(
       lines.push('')
     })
   } else {
-    lines.push(`Book: ${buildSingleUrl(t, origin, dest.name, date, tripDirection)}`)
+    lines.push(`Book: ${buildSingleUrl(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng)}`)
     lines.push('')
   }
   lines.push('──────────────────────────────')
@@ -490,8 +508,8 @@ function TransportFullscreen({ t, dest, direction, origin, date, onClose }: {
 
   const price = (direction === 'oneway' ? t.priceGBP : t.returnPriceGBP) ?? 0
   const priceLabel = direction === 'oneway' ? 'one way' : 'approx return'
-  const legs = buildLegs(t, origin, dest.name, date, direction)
-  const singleUrl = buildSingleUrl(t, origin, dest.name, date, direction)
+  const legs = buildLegs(t, origin, dest.name, date, direction, dest.lat, dest.lng)
+  const singleUrl = buildSingleUrl(t, origin, dest.name, date, direction, dest.lat, dest.lng)
   const routeEmailText = buildRouteEmailText(t, dest, origin, date, direction)
 
   async function handleCopyRoute() {
@@ -675,14 +693,14 @@ function buildEmailText(
     if (t.requiresConnection) {
       lines.push(`  Route: ${t.requiresConnection}`)
     }
-    const legs = buildLegs(t, origin, dest.name, date, tripDirection)
+    const legs = buildLegs(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng)
     if (legs.length > 1) {
       legs.forEach(leg => {
         lines.push(`  • ${leg.label}`)
         lines.push(`    ${leg.url}`)
       })
     } else {
-      const url = buildSingleUrl(t, origin, dest.name, date, tripDirection)
+      const url = buildSingleUrl(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng)
       lines.push(`  Book: ${url}`)
     }
     lines.push('')
@@ -824,7 +842,7 @@ export function DestinationDetail({ inline = false }: { inline?: boolean }) {
               onClick={() => {
                 let blocked = false
                 visibleTransport.forEach(t => {
-                  const w = window.open(buildSingleUrl(t, origin, dest.name, date, tripDirection), '_blank')
+                  const w = window.open(buildSingleUrl(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng), '_blank')
                   if (!w) blocked = true
                 })
                 setTabsBlocked(blocked)
@@ -841,7 +859,7 @@ export function DestinationDetail({ inline = false }: { inline?: boolean }) {
           {visibleTransport.map((t, i) => (
             <TransportCard
               key={i} t={t} direction={tripDirection}
-              origin={origin} destName={dest.name} date={date}
+              origin={origin} destName={dest.name} destLat={dest.lat} destLng={dest.lng} date={date}
               onExpand={() => setSelectedTransport(t)}
             />
           ))}
@@ -974,7 +992,7 @@ export function DestinationDetail({ inline = false }: { inline?: boolean }) {
               {/* Journey legs */}
               <div className={styles.emailSection} style={{ marginTop: 14 }}>HOW TO GET THERE</div>
               {visibleTransport.map((t, i) => {
-                const legs = buildLegs(t, origin, dest.name, date, tripDirection)
+                const legs = buildLegs(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng)
                 const price = (tripDirection === 'oneway' ? t.priceGBP : t.returnPriceGBP) ?? 0
                 return (
                   <div key={i} style={{ marginBottom: 10 }}>
@@ -989,7 +1007,7 @@ export function DestinationDetail({ inline = false }: { inline?: boolean }) {
                           </div>
                         ))
                       : (() => {
-                          const url = buildSingleUrl(t, origin, dest.name, date, tripDirection)
+                          const url = buildSingleUrl(t, origin, dest.name, date, tripDirection, dest.lat, dest.lng)
                           return <div className={styles.emailLegUrl}>{url}</div>
                         })()
                     }
