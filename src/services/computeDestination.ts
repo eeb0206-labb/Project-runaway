@@ -36,14 +36,6 @@ function flightEstimate(distanceKm: number): { mins: number; price: number } {
   return                         { mins: 960, price: 800 }
 }
 
-/** Convert a city name to a URL-friendly slug, e.g. "Kingston upon Hull" → "kingston-upon-hull" */
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[''']/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-}
 
 export function estimateTransport(
   distanceKm: number,
@@ -58,8 +50,6 @@ export function estimateTransport(
 
   const transports: Transport[] = []
 
-  const oSlug = toSlug(originName)
-  const dSlug = toSlug(destName)
   const oEnc  = encodeURIComponent(originName)
   const dEnc  = encodeURIComponent(destName)
 
